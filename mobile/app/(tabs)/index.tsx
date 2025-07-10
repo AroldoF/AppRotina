@@ -1,9 +1,12 @@
-import { Image } from 'expo-image';
-import { Text, StyleSheet } from 'react-native';
+import { Link } from 'expo-router';
+import { Text, View, StyleSheet } from 'react-native';
 
 export default function HomeScreen() {
   return (
-    <Text>Ola</Text>
+    <View>
+      <Text>Ola</Text>
+      <Link href="/(auth)/login">Ir para login</Link>
+    </View>
   );
 }
 
