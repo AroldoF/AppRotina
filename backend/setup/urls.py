@@ -20,6 +20,10 @@ from setup.api_root import api_root  # Import the API root view
 from apps.users.urls import urlpatterns as routes_users # Import the user routes
 from apps.tasks.urls import urlpatterns as routes_tasks # Import the user routes
 from apps.subtasks.urls import urlpatterns as routes_subtasks # Import the subtask routes
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,5 +31,6 @@ urlpatterns = [
     path('api/', include(routes_users)),  # Include user routes
     path('api/', include(routes_tasks)),  # Include task routes
     path('api/', include(routes_subtasks)),  # Include subtask routes
-    # path('api/2/'),  # Include DRF authentication URLs
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
