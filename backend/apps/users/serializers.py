@@ -21,17 +21,40 @@ class LoginSerializer(serializers.Serializer):
         request = self.context.get('request')
         if request is None:
             raise serializers.ValidationError("Request está ausente do contexto.")
-        
+
         username = data.get("username")
         password = data.get("password")
         user = authenticate(request=request, username=username, password=password)
         if not user:
-                raise serializers.ValidationError("Usuário ou senha inválidos")
+            raise serializers.ValidationError("Usuário ou senha inválidos")
 
-        login(request, user)  # Assuming 'request' is available in the context  
-        data['user'] = user  # anexa o user validado
+        # Logando o usuário na sessão
+        login(request, user)
+        
+        data['user'] = user  # anexa o usuário autenticado aos dados válidos
         return data
 
-    class Meta:
-        fields = ['username', 'password']
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
 
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password']
+    
+    def validate(self, data):
+        # Validar que o username ou email não existe já
+        if User.objects.filter(username=data['username']).exists():
+            raise serializers.ValidationError("Este nome de usuário já está em uso.")
+        if User.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError("Este email já está registrado.")
+
+        return data
+
+    def create(self, validated_data):
+        # Criação do usuário
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password']
+        )
+        return user
