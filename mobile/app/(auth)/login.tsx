@@ -8,13 +8,15 @@ import {
   StyleSheet,
 } from 'react-native';
 import React, { useState } from 'react';
-import Campo_Texto from '@/components/Campo_Texto';
 import { router } from 'expo-router';
 import axios from 'axios';
+import Campo_Texto from "@/components/Campo_Texto";
+import { useAuth } from '../../context/AuthContext';
 
-const API_LOGIN_URL = 'http://127.0.0.1:8000/api/login/';
+const API_LOGIN_URL = 'http://127.0.0.1:8000/api/token/';
 
 export default function Login() {
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({ username: '', password: '', geral: '' });
@@ -42,8 +44,6 @@ export default function Login() {
     if (!validarCampos()) return;
 
     setIsLoading(true);
-    setErrors(prev => ({ ...prev, geral: '' }));
-
     try {
       const response = await axios.post(API_LOGIN_URL, { username, password });
       const { access, refresh } = response.data;
@@ -54,7 +54,7 @@ export default function Login() {
         const mensagemErro = error.response?.data?.detail || 'Erro ao logar';
         setErrors(prev => ({ ...prev, geral: mensagemErro }));
       } else {
-        setErrors(prev => ({ ...prev, geral: 'Erro desconhecido ao tentar logar' }));
+        setErrors({ username: '', password: '', geral: 'Erro inesperado. Tente novamente mais tarde.' });
       }
     } finally {
       setIsLoading(false);
