@@ -28,7 +28,7 @@ class LoginViewSet(viewsets.ViewSet):
 class RegisterViewSet(viewsets.ViewSet):
     permission_classes = [AllowAny]
     serializer_class = UserSerializer
-    http_method_names = ['get', 'post']
+    http_method_names = ['get', 'post', 'options']
 
     def list(self, request):
         return Response({'Message': 'Crie sua conta para continuar!'})
