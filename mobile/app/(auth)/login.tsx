@@ -1,8 +1,16 @@
-import React, { useState } from "react";
-import axios from "axios";
+import {
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
+import React, { useState } from 'react';
+import Campo_Texto from '@/components/Campo_Texto';
 import { router } from 'expo-router';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import Campo_Texto from "@/components/Campo_Texto";
+import axios from 'axios';
 
 const API_LOGIN_URL = 'http://127.0.0.1:8000/api/login/';
 
@@ -40,11 +48,7 @@ export default function Login() {
       const response = await axios.post(API_LOGIN_URL, { username, password });
       const { access, refresh } = response.data;
       console.log("Tokens recebidos:", access, refresh);
-
-      // Aqui você pode salvar os tokens (AsyncStorage, por exemplo) e redirecionar:
-      // await AsyncStorage.setItem('accessToken', access);
       router.replace('/');
-
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const mensagemErro = error.response?.data?.detail || 'Erro ao logar';
@@ -58,60 +62,66 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.formContainer}>
-      <Text style={styles.title}>Login</Text>
-      <Text style={styles.subtitle}>Entre com seu usuário e senha para logar</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={80}
+    >
+      <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>Login</Text>
+        <Text style={styles.subtitle}>Entre com seu usuário e senha para logar</Text>
 
-      {errors.geral !== '' && <Text style={styles.textError}>{errors.geral}</Text>}
+        {errors.geral !== '' && <Text style={styles.textError}>{errors.geral}</Text>}
 
-      <Campo_Texto
-        label="Usuário"
-        value={username}
-        onChangeText={setUsername}
-        placeholder="Digite seu usuário"
-        errorMessage={errors.username}
-      />
+        <Campo_Texto
+          label="Usuário"
+          value={username}
+          onChangeText={setUsername}
+          placeholder="Digite seu usuário"
+          errorMessage={errors.username}
+        />
 
-      <Campo_Texto
-        label="Senha"
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Digite sua senha"
-        secureTextEntry
-        errorMessage={errors.password}
-      />
+        <Campo_Texto
+          label="Senha"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Digite sua senha"
+          secureTextEntry
+          errorMessage={errors.password}
+        />
 
-      <TouchableOpacity style={styles.forgotPasswordButton}>
-        <Text style={styles.textLink}>Esqueceu a senha?</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.button, isLoading && styles.buttonDisabled]}
-        onPress={handleLogin}
-        disabled={isLoading}
-      >
-        <Text style={styles.buttonText}>
-          {isLoading ? 'Carregando...' : 'Logar'}
-        </Text>
-      </TouchableOpacity>
-
-      <View style={styles.registerContainer}>
-        <Text>Você não tem uma conta?</Text>
-        <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-          <Text style={styles.textLink}> Cadastre-se</Text>
+        <TouchableOpacity style={styles.forgotPasswordButton}>
+          <Text style={styles.textLink}>Esqueceu a senha?</Text>
         </TouchableOpacity>
-      </View>
-    </View>
+
+        <TouchableOpacity
+          style={[styles.button, isLoading && styles.buttonDisabled]}
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          <Text style={styles.buttonText}>
+            {isLoading ? 'Carregando...' : 'Logar'}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.registerContainer}>
+          <Text>Você não tem uma conta?</Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+            <Text style={styles.textLink}> Cadastre-se</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   formContainer: {
-    margin: 'auto',
     padding: 30,
     borderRadius: 10,
     gap: 10,
-    justifyContent: 'space-around',
+    justifyContent: 'center',
+    flexGrow: 1,
   },
   title: {
     fontSize: 30,
@@ -133,7 +143,6 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
-    width: '100%',
   },
   buttonDisabled: {
     backgroundColor: '#888',

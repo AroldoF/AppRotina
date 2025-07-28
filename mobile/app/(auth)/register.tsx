@@ -1,6 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import Campo_Texto from "@/components/Campo_Texto";
+import axios from "axios";
+import { router } from "expo-router";
+
+const API_LOGIN_URL = 'http://127.0.0.1:8000/api/register/';
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -50,19 +54,41 @@ export default function Register() {
     return valid;
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!validarCampos()) {
       return;
     }
-
-    // Aqui você pode fazer a requisição para sua API
-    // setIsLoading(true);
-    // axios.post(...) ...
-    // depois setIsLoading(false)
-  };
+    setIsLoading(true);
+        setErrors(prev => ({ ...prev, geral: '' }));
+    
+        try {
+          const response = await axios.post(API_LOGIN_URL, { username, email, password });
+          const { access, refresh } = response.data;
+          console.log("Tokens recebidos:", access, refresh);
+    
+          // Aqui você pode salvar os tokens (AsyncStorage, por exemplo) e redirecionar:
+          // await AsyncStorage.setItem('accessToken', access);
+          router.replace('/');
+    
+        } catch (error) {
+          if (axios.isAxiosError(error)) {
+            const mensagemErro = error.response?.data?.detail || 'Erro ao registrar';
+            setErrors(prev => ({ ...prev, geral: mensagemErro }));
+          } else {
+            setErrors(prev => ({ ...prev, geral: 'Erro desconhecido ao tentar registrar' }));
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
   return (
-    <View style={styles.formulario}>
+  <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+    keyboardVerticalOffset={80}
+  >
+    <ScrollView contentContainerStyle={styles.formulario} keyboardShouldPersistTaps="handled">
       <Text style={styles.tituloP}>Cadastre-se</Text>
       <Text style={{ marginBottom: 20 }}>Crie sua conta para continuar</Text>
 
@@ -109,13 +135,15 @@ export default function Register() {
       >
         <Text style={{ color: "#fff" }}>{isLoading ? "Carregando..." : "Cadastrar"}</Text>
       </TouchableOpacity>
-    </View>
-  );
+    </ScrollView>
+  </KeyboardAvoidingView>
+);
+
 }
 
 const styles = StyleSheet.create({
   formulario: {
-    margin: 'auto',
+    marginVertical: 'auto',
     padding: 30,
     borderRadius: 10,
     justifyContent: "center",

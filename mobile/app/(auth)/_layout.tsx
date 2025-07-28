@@ -9,7 +9,7 @@ export default function AuthLayout() {
       <Stack.Screen
         name="register"
         options={{
-          title: 'Cadastro',
+          title: '',
           headerShown: true, // Mostra o cabeçalho com botão de voltar
         }}
       />
