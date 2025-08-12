@@ -1,12 +1,13 @@
 from rest_framework import serializers
 # from apps.users.models import User  # Ensure this matches the model name in models.py
 from django.contrib.auth.models import User
+from .models import UserProfile
 from django.contrib.auth import authenticate, login, logout
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User 
-        fields = ['id', 'username', 'email', 'password', 'date_joined']
+        fields = ['id', 'username', 'email', 'password', 'date_joined',]
         # exclude =  ['user_permissions', 'groups', 'is_superuser', 'is_active','first_name', 'last_name',]  # Exclude fields that should not be serialized
         read_only_fields = ['id', 'date_joined'] 
         extra_kwargs = {
@@ -58,3 +59,13 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
+    
+class UserProfileSerializer(serializers.ModelSerializer):
+    # Usando ReadOnlyField para pegar diretamente os campos id e username do User relacionado
+    user_id = serializers.ReadOnlyField(source='user.id')  # Acessa o campo 'id' do 'user'
+    username = serializers.ReadOnlyField(source='user.username')  # Acessa o campo 'username' do 'user'
+
+    class Meta:
+        model = UserProfile
+        fields = ['user_id', 'username', 'points']  # Incluindo os campos user_id e username
+        read_only_fields = ['user']  # Evitar que o campo 'user' seja modificado diretamente

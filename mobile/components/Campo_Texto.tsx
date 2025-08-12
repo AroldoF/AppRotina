@@ -5,6 +5,8 @@ import { TextInput, View, StyleSheet, Text } from "react-native";
 type CampoTextoProps = {
   label: string;
   value: string;
+  type?: string;
+  multiline?: boolean;
   onChangeText: (text: string) => void;
   placeholder?: string;
   secureTextEntry?: boolean;
@@ -18,6 +20,8 @@ export default function Campo_Texto(props : CampoTextoProps) {
             <Text style={styles.label}>{props.label}</Text>
                 <TextInput
                   style={styles.textInput}
+                  // type={props.type}
+                  multiline={props.multiline}
                   value={props.value}
                   onChangeText={props.onChangeText}
                   placeholder={props.placeholder}

@@ -5,6 +5,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import logout
 from rest_framework_simplejwt.tokens import RefreshToken
+from .serializers import UserProfileSerializer
+from .models import UserProfile
+from rest_framework.decorators import action
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by("id")  
@@ -83,3 +86,21 @@ class SessionViewSet(viewsets.ViewSet):
         if request.user.is_authenticated:
             return Response({'isAuthenticated': True, 'username': request.user.username})
         return Response({'isAuthenticated': False})
+    
+
+class UserProfileView(viewsets.ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    # permission_classes = [IsAuthenticated]
+    http_method_names = ['get']  # Permitindo somente GET
+
+    # @action(detail=False, methods=['get'], url_path='points')
+    # def get_points(self, request):
+    #     # Acessa o perfil do usuário autenticado
+    #     user_profile = UserProfile.objects.get(user=request.user)
+
+    #     # Retorna o nome de usuário e os pontos
+    #     return Response({
+    #         'username': request.user.username,
+    #         'points': user_profile.points
+    #     })

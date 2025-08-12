@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   ScrollView,
@@ -7,16 +8,12 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import React, { useState } from 'react';
 import { router } from 'expo-router';
-import axios from 'axios';
-import Campo_Texto from "@/components/Campo_Texto";
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext'; // Importando o contexto de autenticação
+import Campo_Texto from '@/components/Campo_Texto';
 
-const API_LOGIN_URL = 'http://127.0.0.1:8000/api/token/';
-
-export default function Login() {
-  const { login } = useAuth();
+const Login = () => {
+  const { login } = useAuth(); // Pegando a função login do contexto
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({ username: '', password: '', geral: '' });
@@ -45,17 +42,14 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      const response = await axios.post(API_LOGIN_URL, { username, password });
-      const { access, refresh } = response.data;
-      console.log("Tokens recebidos:", access, refresh);
+      // Chama a função login do contexto
+      await login({ username, password });
+
+      // Após login bem-sucedido, navega para a página principal
       router.replace('/');
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const mensagemErro = error.response?.data?.detail || 'Erro ao logar';
-        setErrors(prev => ({ ...prev, geral: mensagemErro }));
-      } else {
-        setErrors({ username: '', password: '', geral: 'Erro inesperado. Tente novamente mais tarde.' });
-      }
+      // Se houver erro, define a mensagem de erro no estado
+      setErrors(prev => ({ ...prev, geral: 'Erro ao logar. Verifique suas credenciais.' }));
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +107,7 @@ export default function Login() {
       </ScrollView>
     </KeyboardAvoidingView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   formContainer: {
@@ -159,3 +153,5 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 });
+
+export default Login;

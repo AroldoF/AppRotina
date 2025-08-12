@@ -1,15 +1,20 @@
-import { Stack } from 'expo-router';
-import 'react-native-reanimated';
-import { AuthProvider } from '../context/AuthContext'; // ajuste o caminho se necessário
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthProvider } from '../context/AuthContext';
+import { Slot } from 'expo-router';
+import { StyleSheet } from 'react-native';
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </AuthProvider>
+    <GestureHandlerRootView style={styles.container}>
+      <AuthProvider>
+        <Slot />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

@@ -1,86 +1,375 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
+import { router } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import axios from 'axios';
+import ListaDeTarefas from '@/components/ListaDeTarefas';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
+import Campo_Texto from '@/components/Campo_Texto';
+import { ScrollView } from 'react-native-gesture-handler';
+import ModalSelector from 'react-native-modal-selector';
 
 dayjs.locale('pt-br');
 
 export default function DateNavigatorWithCalendar() {
   const [date, setDate] = useState(dayjs());
   const [showCalendar, setShowCalendar] = useState(false);
+  const { user_id } = useAuth();
+
+  // Menu de filtro
+  const [tipoSelecionado, setTipoSelecionado] = useState<'Pendentes' | 'Finalizadas'>('Pendentes');
+
+  // Modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [titulo, setTitulo] = useState('');
+  const [descricao, setDescricao] = useState('');
+  const [difficulty, setDifficulty] = useState('');
+  const [editedDueDate, setEditedDueDate] = useState(new Date(dayjs().format('YYYY-MM-DD')));
+  const [isDateChecked, setIsDateChecked] = useState(false);
 
   const previousDay = () => setDate(prev => prev.subtract(1, 'day'));
   const nextDay = () => setDate(prev => prev.add(1, 'day'));
 
+  const getTitleByDate = (dateToCompare: any) => {
+    const today = dayjs().startOf('day');
+    const targetDate = dayjs(dateToCompare).startOf('day');
+    const diff = targetDate.diff(today, 'day');
+
+    if (diff === 0) return 'HOJE';
+    if (diff > 0) return `Em ${diff} dia${diff > 1 ? 's' : ''}`;
+    const pastDays = Math.abs(diff);
+    return `Há ${pastDays} dia${pastDays > 1 ? 's' : ''}`;
+  };
+
+  const handleSalvarTarefa = async () => {
+    if (!titulo.trim()) {
+      alert("Digite um título para a tarefa");
+      return;
+    }
+    try {
+      await axios.post(`http://192.168.0.169:8000/api/tasks/`, {
+        title: titulo,
+        description: descricao,
+        difficulty: difficulty,
+        conclusion_date: date.format('YYYY-MM-DD') || null,
+        user: user_id || null,
+      });
+      setModalVisible(false);
+      setTitulo('');
+      setDescricao('');
+    } catch (error) {
+      console.error("Erro ao criar tarefa:", error);
+    }
+  };
+
+  const handleDateChange = (event: any, selectedDate: Date | undefined) => {
+    const currentDate = selectedDate || editedDueDate;
+    setEditedDueDate(currentDate);
+  };
+  // const handleSalvarTarefa = () => {
+  //   // Lógica para salvar a tarefa
+  //   setModalVisible(false);
+  //   setTitulo('');
+  //   setDescricao('');
+  // };
+
+  const difficultyOptions = [
+    { key: 'F', label: 'Fácil' },
+    { key: 'I', label: 'Intermediário' },
+    { key: 'D', label: 'Difícil' },
+  ];
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.today}>HOJE</Text>
+    <ScrollView contentContainerStyle={styles.scrollContent}> 
+    <View>
+      <View style={styles.container}>
+        <Text style={styles.today}>{getTitleByDate(date)}</Text>
 
-      <View style={styles.navigator}>
-        <TouchableOpacity onPress={previousDay}>
-          <Ionicons name="chevron-back" size={24} color="#fff" style={styles.icon} />
-        </TouchableOpacity>
+        <View style={styles.navigator}>
+          <TouchableOpacity onPress={previousDay}>
+            <Ionicons name="chevron-back" size={24} color="#fff" style={styles.icon} />
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setShowCalendar(!showCalendar)}>
-          <View style={styles.dateBox}>
-            <Text style={styles.dateText}>
-              {date.format('dddd')} - {date.format('D')}
-            </Text>
+          <TouchableOpacity onPress={() => setShowCalendar(!showCalendar)}>
+            <View style={styles.dateBox}>
+              <Text style={styles.dateText}>
+                {date.format('dddd')} - {date.format('D')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={nextDay}>
+            <Ionicons name="chevron-forward" size={24} color="#fff" style={styles.icon} />
+          </TouchableOpacity>
+        </View>
+
+        {showCalendar && (
+          <View>
+            <Calendar
+              onDayPress={day => {
+                setDate(dayjs(day.dateString));
+                setShowCalendar(false);
+              }}
+              markedDates={{
+                [date.format('YYYY-MM-DD')]: { selected: true, selectedColor: '#2a9d9f' },
+              }}
+              theme={{
+                selectedDayBackgroundColor: '#2a9d9f',
+                arrowColor: '#2a9d9f',
+                todayTextColor: '#A64735',
+              }}
+              style={styles.calendar}
+            />
+            <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+              <Text style={{
+                textAlign: 'center',
+                color: '#2a9d9f',
+                paddingVertical: 10,
+                backgroundColor: '#fff',
+              }}>
+                ver mais +
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        )}
+        
+        {/* Menu de filtro */}
+        <View style={styles.menu}>
+          <TouchableOpacity
+            style={[styles.menuButton, tipoSelecionado === 'Pendentes' && styles.menuButtonAtivo]}
+            onPress={() => setTipoSelecionado('Pendentes')}
+          >
+            <Text style={[styles.menuText, tipoSelecionado === 'Pendentes' && styles.menuTextAtivo]}>
+              Pendentes
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={nextDay}>
-          <Ionicons name="chevron-forward" size={24} color="#fff" style={styles.icon} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.menuButton, tipoSelecionado === 'Finalizadas' && styles.menuButtonAtivo]}
+            onPress={() => setTipoSelecionado('Finalizadas')}
+          >
+            <Text style={[styles.menuText, tipoSelecionado === 'Finalizadas' && styles.menuTextAtivo]}>
+              Finalizadas
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <ListaDeTarefas date={date} label="Tarefas" tipo={tipoSelecionado} />
       </View>
-      {showCalendar && (
-        <Calendar
-          onDayPress={day => {
-            setDate(dayjs(day.dateString));
-            setShowCalendar(false); // Fecha ao selecionar
-          }}
-          markedDates={{
-            [date.format('YYYY-MM-DD')]: { selected: true, selectedColor: '#2a9d9f' }
-          }}
-          theme={{
-            selectedDayBackgroundColor: '#2a9d9f',
-            arrowColor: '#2a9d9f',
-            todayTextColor: '#A64735',
-          }}
-          style={styles.calendar}
-        />
-      )}
+
+    <Modal
+      transparent
+      animationType="none"
+      visible={modalVisible}
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <ScrollView contentContainerStyle={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Criar Tarefa</Text>
+
+          <Campo_Texto
+            label="Título"
+            placeholder="Digite o Título"
+            value={titulo}
+            onChangeText={setTitulo}
+          />
+
+          <Campo_Texto
+            label="Descrição"
+            value={descricao}
+            onChangeText={setDescricao}
+            placeholder="Digite a descrição"
+            multiline
+          />
+
+          <View>
+            <Text style={styles.label}>Dificuldade</Text>
+            <ModalSelector
+              data={difficultyOptions}
+              initValue={difficulty || "Selecione a dificuldade"}
+              onChange={(option) => setDifficulty(option.key)}
+              style={styles.textInput}
+            >
+              <Text style={styles.modalSelectorText}>
+                {difficulty ? difficultyOptions.find(option => option.key === difficulty).label : 'Selecione a dificuldade'}
+              </Text>
+            </ModalSelector>
+          </View>
+
+          <View style={styles.checkboxContainer}>
+            <Switch
+              value={isDateChecked}
+              onValueChange={setIsDateChecked}
+              thumbColor={isDateChecked ? '#2a9d9f' : '#ccc'}
+              trackColor={{ false: '#ccc', true: '#2a9d9f' }}
+            />
+            <Text style={styles.checkboxLabel}>Definir data de conclusão</Text>
+          </View>
+
+          {isDateChecked && (
+            <View>
+              <Text style={styles.label}>Data de conclusão</Text>
+              <DateTimePicker
+                style={{ backgroundColor: 'transparent', paddingHorizontal: 20, alignSelf: 'center' }}
+                value={editedDueDate}
+                mode="date"
+                display="spinner"
+                textColor="#000"
+                onChange={handleDateChange}
+              />
+            </View>
+          )}
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: '#999999' }]}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={{ color: '#fff' }}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: '#2a9d9f' }]}
+              onPress={handleSalvarTarefa}
+            >
+              <Text style={{ color: '#fff' }}>Salvar</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+
+    {/* Botão flutuante */}
+    <TouchableOpacity
+      style={styles.fab}
+      onPress={() => setModalVisible(true)}
+    >
+      <Ionicons name="add" size={28} color="#fff" />
+    </TouchableOpacity>
     </View>
+  </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  today: {
+  modalContainer: {
+    marginVertical: 50,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 8,
+    width: '80%',
+    maxWidth: 500,
+    gap: 10,
+  },
+  modalTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
+    color: '#2a9d9f',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
     marginBottom: 8,
   },
-  navigator: {
+  textInput: {
+    width: '100%',
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingLeft: 10,
+    marginBottom: 15,
+  },
+  checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 20,
   },
+  checkboxLabel: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#333',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+  },
+  button: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  modalSelectorText: {
+    padding: 10,
+    color: '#333',
+    fontSize: 16,
+    backgroundColor: '#e5e5e5',
+    borderRadius: 5,
+    textAlign: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 16,
+    paddingBottom: 80,
+  },
+  container: { alignItems: 'center', marginVertical: 10 },
+  today: { fontWeight: 'bold', marginBottom: 8 },
+  menu: {
+    flexDirection: 'row',
+    padding: 10,
+    gap: 20,
+    justifyContent:'center',
+    marginBottom: 10,
+    marginTop: 20,
+    backgroundColor: '#e5e5e5',
+    borderRadius: 8,
+    overflow: 'hidden',
+    minWidth: '30%',
+  },
+  menuButton: {
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+  },
+  menuButtonAtivo: {
+    backgroundColor: '#2a9d9f',
+  },
+  menuText: {
+    color: '#555',
+    fontWeight: '500'
+  },
+  menuTextAtivo: {
+    color: '#fff',
+    fontWeight: 'bold'
+  },
+  navigator: { flexDirection: 'row', alignItems: 'center' },
   dateBox: {
     backgroundColor: '#2a9d9f',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 15,
     marginHorizontal: 10,
     borderRadius: 10,
     elevation: 2,
+    alignItems: 'center',
   },
-  dateText: {
-    color: '#fff',
-    fontWeight: '500',
-  },
+  dateText: { color: '#fff', fontWeight: '500', width: '100%' },
   icon: {
     backgroundColor: '#2a9d9f',
     padding: 10,
@@ -88,8 +377,21 @@ const styles = StyleSheet.create({
   },
   calendar: {
     marginTop: 10,
-    borderRadius: 10,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
     elevation: 2,
-    width: 350, // ou ajuste conforme seu layout
+    width: 350,
+  },
+  fab: {
+    position: 'absolute',
+    bottom : -220,
+    left: '89%',
+    backgroundColor: '#2a9d9f',
+    width: 40,
+    height: 40,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
   },
 });

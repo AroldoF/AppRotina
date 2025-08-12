@@ -19,7 +19,7 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     # project apps
     'apps.users',  
     'apps.tasks',  
-    'apps.subtasks',  
+    'apps.subtasks', 
 ]
 
 MIDDLEWARE = [
@@ -132,6 +132,6 @@ REST_FRAMEWORK = {
 
     ),
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',  # você pode mudar por view
+        # 'rest_framework.permissions.IsAuthenticated',  # você pode mudar por view
     ]
 }
