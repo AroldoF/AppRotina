@@ -5,12 +5,15 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import axios from 'axios';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import ModalSelector from 'react-native-modal-selector';
 
 import CampoTexto from '@/components/Campo_Texto';
 import SubtarefaItem from '@/components/SubtarefaItem';
 import { router } from 'expo-router';
 // import { Background } from '@react-navigation/elements';
-import { ScrollView, Swipeable } from 'react-native-gesture-handler';
+import { ScrollView, Swipeable, Switch } from 'react-native-gesture-handler';
+import { useTasks } from '@/context/TaskContext';
+import Campo_Texto from '@/components/Campo_Texto';
 
 type Subtarefa = {
   id: number;
@@ -45,21 +48,44 @@ const TarefaItem: React.FC<TarefaItemProps> = ({ tarefa }) => {
   const [editedDescription, setEditedDescription] = useState(tarefa.description);
   const [editedDueDate, setEditedDueDate] = useState(tarefa.conclusion_date ? new Date(tarefa.conclusion_date) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(true);
+  const [isDateChecked, setIsDateChecked] = useState(false);
+  const { refreshTasks } = useTasks();
+  const [difficulty, setDifficulty] = useState('');
+  const [titulo, setTitulo] = useState('');
+  const [descricao, setDescricao] = useState('');
 
 
 const renderRightActions = () => (
-  <View style={{ flexDirection: 'row' }}>
-    <Pressable style={[styles.button, styles.deleteButton, {marginBottom: 20,}]} onPress={()=>''}>
-      <Feather name="x-circle" size={18} color="#fff" />
-    </Pressable>
+  <View style={{ 
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    backgroundColor: 'red',
+    height: 48,
+    borderRadius: 5,
+    // height: '100%',
+    zIndex: 10,
+    paddingHorizontal: 10,
+  }}>
+    <Feather name="x-circle" size={24} color="#fff" />
   </View>
 );
 
+
+
 const renderLeftActions = () => (
-  <View style={{ flexDirection: 'row',}}>
-    <Pressable style={[styles.button, styles.viewButton, {marginBottom: 20,}]} onPress={() => ''}>
+  <View style={{ 
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    backgroundColor: 'green',
+    height: 48,
+    borderRadius: 5,
+    // height: '100%',
+    zIndex: 10,
+    paddingHorizontal: 10,
+  }}>
       <Feather name="check-circle" size={18} color="#fff" />
-    </Pressable>
   </View>
 );
 
@@ -69,6 +95,7 @@ const renderLeftActions = () => (
     try {
       const response = await axios.get(`http://localhost:8000/api/tasks/${tarefa.id}/subtasks/`);
       setSubtasks(response.data); // Atualiza o estado com as subtarefas
+      await refreshTasks();
     } catch (error) {
       console.error('Erro ao buscar subtarefas:', error);
     } finally {
@@ -92,10 +119,11 @@ const renderLeftActions = () => (
   // Função para deletar a tarefa (chama a API para excluir)
   const handleDelete = async () => {
     try {
-      const response = await axios.delete(`http://192.168.0.169:8000/api/tasks/${tarefa.id}/`);
+      const response = await axios.delete(`http://localhost:8000/api/tasks/${tarefa.id}/`);
       if (response.status === 200) {
         Alert.alert("Sucesso", `Tarefa ${tarefa.id} excluída com sucesso.`);
       }
+      await refreshTasks();
     } catch (error) {
       Alert.alert("Erro", "Houve um erro ao excluir a tarefa.");
     }
@@ -105,6 +133,11 @@ const renderLeftActions = () => (
     // Exibe o modal para editar a tarefa
     setModalVisible(true);
   };
+  const difficultyOptions = [
+    { key: 'B', label: 'Fácil' },
+    { key: 'I', label: 'Intermediário' },
+    { key: 'A', label: 'Difícil' },
+  ];
 
   const handleSaveEdit = async () => {
     try {
@@ -118,6 +151,7 @@ const renderLeftActions = () => (
         Alert.alert("Sucesso", `Tarefa ${tarefa.id} editada com sucesso.`);
         setModalVisible(false); // Fecha o modal após salvar
       }
+      await refreshTasks();
     } catch (error) {
       Alert.alert("Erro", "Houve um erro ao editar a tarefa.");
     }
@@ -139,15 +173,37 @@ const renderLeftActions = () => (
   };
   const handlePatchStatus = async (newStatus: string) => {
     try {
-      const response = await axios.patch(`http://192.168.0.169:8000/api/tasks/${tarefa.id}/`, {
+      const response = await axios.patch(`http://localhost:8000/api/tasks/${tarefa.id}/`, {
         completed: newStatus,
+        
       });
       
-      if (response.status === 200) {
-        
-      }
+      await refreshTasks();
     } catch (error) {
       Alert.alert('Erro', 'Erro ao atualizar o status da tarefa.');
+    }
+  };
+  const handleSalvarTarefa = async () => {
+    if (!titulo.trim()) {
+      alert("Digite um título para a tarefa");
+      return;
+    }
+    try {
+      await axios.post(`http://localhost:8000/api/tasks/`, {
+        title: titulo,
+        description: descricao,
+        difficulty: difficulty,
+        conclusion_date: isDateChecked ? date.format('YYYY-MM-DD') : null,
+        user: user_id || null,
+      });
+      setModalVisible(false);
+      setTitulo('');
+      setDescricao('');
+      setDifficulty('');
+      setIsDateChecked(false);
+      await refreshTasks(); // Atualiza a lista global de tarefas
+    } catch (error) {
+      console.error("Erro ao criar tarefa:", error);
     }
   };
 
@@ -155,8 +211,8 @@ const renderLeftActions = () => (
     <Swipeable
       renderRightActions={renderRightActions}
       renderLeftActions={renderLeftActions}
-      rightThreshold={42}
-      leftThreshold={42}
+      rightThreshold={82}
+      leftThreshold={82}
       overshootRight={false}
       overshootLeft={false}
       onSwipeableRightOpen={handleSwipeRight} // Trigger on swipe right
@@ -177,10 +233,10 @@ const renderLeftActions = () => (
             <View>
               <View style={styles.buttonsRow}>
                 <Pressable style={[styles.button, styles.editButton]} onPress={() => setModalVisible(true)}>
-                  <Feather name="edit" size={18} color="#fff" />
+                  <Feather name="edit" size={20} color="#fff" />
                 </Pressable>
-                <Pressable style={[styles.button, styles.deleteButton]} onPress={() => { /* Deletar Tarefa */ }}>
-                  <Feather name="trash" size={18} color="#fff" />
+                <Pressable style={[styles.button, styles.deleteButton]} onPress={handleDelete}>
+                  <Feather name="trash" size={20} color="#fff" />
                 </Pressable>
               </View>
             </View>
@@ -217,70 +273,131 @@ const renderLeftActions = () => (
       </View>
       
       {/* Modal para editar a tarefa */}
-      <Modal
-  visible={modalVisible}
-  transparent={true}
-  animationType="fade"
-  onRequestClose={() => setModalVisible(false)}
->
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalContainer}>
-      <Text style={styles.modalTitle}>Editar Tarefa</Text>
-
-      <CampoTexto
-        label="Título"
-        value={editedTitle}
-        onChangeText={setEditedTitle}
-        placeholder="Digite o título"
-        required
-      />
-
-      <CampoTexto
-        label="Descrição"
-        value={editedDescription}
-        onChangeText={setEditedDescription}
-        placeholder="Digite a descrição"
-        required
-        multiline
-        numberOfLines={3}
-      />
-
-      <View>
-        <Text style={styles.label}>Data de Conclusão:</Text>
-        <DateTimePicker
-          style={styles.datePicker}
-          value={editedDueDate}
-          mode="date"
-          display="spinner"
-          textColor="#000"
-          onChange={handleDateChange}
-        />
-      </View>
-
-      <View style={styles.modalButtons}>
-        <TouchableOpacity
-          style={[styles.button, styles.cancelButton]}
-          onPress={() => setModalVisible(false)}
-        >
-          <Text style={styles.buttonText}>Cancelar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.button, styles.saveButton]}
-          onPress={handleSaveEdit}
-          disabled={!editedTitle || !editedDescription}
-        >
-          <Text style={styles.buttonText}>Salvar</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
-  </Modal>
-      </Swipeable>
+            <Modal transparent animationType="none" visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+              <View style={styles.modalOverlay}>
+                <ScrollView contentContainerStyle={styles.modalContainer}>
+                  <Text style={styles.modalTitle}>Criar Tarefa</Text>
+                  <Campo_Texto label="Título" placeholder="Digite o Título" value={titulo} onChangeText={setTitulo} />
+                  <Campo_Texto label="Descrição" value={descricao} onChangeText={setDescricao} placeholder="Digite a descrição" multiline />
+                  <Text style={styles.label}>Dificuldade</Text>
+                  <ModalSelector
+                    data={difficultyOptions}
+                    initValue={difficulty || "Selecione a dificuldade"}
+                    onChange={(option) => setDifficulty(option.key)}
+                  >
+                    <Text style={styles.modalSelectorText}>
+                      {difficulty ? difficultyOptions.find(o => o.key === difficulty)?.label : 'Selecione a dificuldade'}
+                    </Text>
+                  </ModalSelector>
+      
+                  <View style={styles.checkboxContainer}>
+                    <Switch
+                      value={isDateChecked}
+                      onValueChange={setIsDateChecked}
+                      thumbColor={isDateChecked ? '#2a9d9f' : '#ccc'}
+                      trackColor={{ false: '#ccc', true: '#2a9d9f' }}
+                    />
+                    <Text style={styles.checkboxLabel}>Definir data de conclusão</Text>
+                  </View>
+      
+                  {isDateChecked && (
+                    <View>
+                      <Text style={styles.label}>Data de conclusão</Text>
+                      <DateTimePicker
+                        style={styles.datePicker}
+                        value={editedDueDate}
+                        mode="date"
+                        display="spinner"
+                        textColor="#000"
+                        onChange={handleDateChange}
+                      />
+                    </View>
+                  )}
+      
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setModalVisible(false)}>
+                      <Text style={styles.buttonText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSalvarTarefa}>
+                      <Text style={styles.buttonText}>Salvar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
+            </Modal>
+            </Swipeable>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    marginVertical: 50,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 8,
+    width: '80%',
+    maxWidth: 500,
+    gap: 10,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#2a9d9f',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  textInput: {
+    width: '100%',
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingLeft: 10,
+    marginBottom: 15,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  checkboxLabel: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#333',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+  },
+  button: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  modalSelectorText: {
+    padding: 10,
+    color: '#333',
+    fontSize: 16,
+    backgroundColor: '#e5e5e5',
+    borderRadius: 5,
+    textAlign: 'center',
+  },
   tarefaContainer: {
     marginBottom: 20,
     backgroundColor: '#fff',
@@ -320,10 +437,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#e0e0e0',
     paddingTop: 10,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: 500,
-  },
   description: {
     fontSize: 15,
     color: '#333',
@@ -335,18 +448,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginBottom: 15,
     gap: 10,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    justifyContent: 'center',
-    gap: 6,
+    // position: 'absolute',
+    // right: 0,
+    // top: 0,
   },
   editButton: {
     backgroundColor: '#2980b9',
@@ -371,33 +475,7 @@ const styles = StyleSheet.create({
   justifyContent: 'space-between', // Descrição à esquerda e botões à direita
   alignItems: 'center', // Alinha verticalmente os itens no centro
 },
- modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContainer: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 8,
-    width: '80%',
-    maxWidth: 400,
-    gap: 10,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#2a9d9f',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 15,
-    borderRadius: 8,
-  },
+
   cancelButton: {
     backgroundColor: '#bbb',
     marginRight: 10,

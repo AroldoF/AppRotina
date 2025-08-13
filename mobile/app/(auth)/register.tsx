@@ -95,7 +95,7 @@ export default function Register() {
       {errors.geral ? <Text style={styles.textError}>{errors.geral}</Text> : null}
 
       <Campo_Texto
-        label="Username"
+        label="Usuário"
         value={username}
         onChangeText={setUsername}
         placeholder="Digite seu usuário"

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Switch } from 'react-native';
+import {
+  View, Text, TouchableOpacity, StyleSheet, Modal, Platform, Switch, ScrollView
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import dayjs from 'dayjs';
@@ -9,10 +11,10 @@ import { useAuth } from '@/context/AuthContext';
 import axios from 'axios';
 import ListaDeTarefas from '@/components/ListaDeTarefas';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import Campo_Texto from '@/components/Campo_Texto';
-import { ScrollView } from 'react-native-gesture-handler';
 import ModalSelector from 'react-native-modal-selector';
+import { useTasks } from '@/context/TaskContext'; // Importa o contexto
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 dayjs.locale('pt-br');
 
@@ -20,11 +22,9 @@ export default function DateNavigatorWithCalendar() {
   const [date, setDate] = useState(dayjs());
   const [showCalendar, setShowCalendar] = useState(false);
   const { user_id } = useAuth();
-
-  // Menu de filtro
+  const { refreshTasks } = useTasks(); // Obtém o refreshTasks
+  
   const [tipoSelecionado, setTipoSelecionado] = useState<'Pendentes' | 'Finalizadas'>('Pendentes');
-
-  // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -39,11 +39,9 @@ export default function DateNavigatorWithCalendar() {
     const today = dayjs().startOf('day');
     const targetDate = dayjs(dateToCompare).startOf('day');
     const diff = targetDate.diff(today, 'day');
-
     if (diff === 0) return 'HOJE';
     if (diff > 0) return `Em ${diff} dia${diff > 1 ? 's' : ''}`;
-    const pastDays = Math.abs(diff);
-    return `Há ${pastDays} dia${pastDays > 1 ? 's' : ''}`;
+    return `Há ${Math.abs(diff)} dia${Math.abs(diff) > 1 ? 's' : ''}`;
   };
 
   const handleSalvarTarefa = async () => {
@@ -52,57 +50,49 @@ export default function DateNavigatorWithCalendar() {
       return;
     }
     try {
-      await axios.post(`http://192.168.0.169:8000/api/tasks/`, {
+      await axios.post(`http://localhost:8000/api/tasks/`, {
         title: titulo,
         description: descricao,
         difficulty: difficulty,
-        conclusion_date: date.format('YYYY-MM-DD') || null,
+        conclusion_date: isDateChecked ? date.format('YYYY-MM-DD') : null,
         user: user_id || null,
       });
       setModalVisible(false);
       setTitulo('');
       setDescricao('');
+      setDifficulty('');
+      setIsDateChecked(false);
+      await refreshTasks(); // Atualiza a lista global de tarefas
     } catch (error) {
       console.error("Erro ao criar tarefa:", error);
     }
   };
 
-  const handleDateChange = (event: any, selectedDate: Date | undefined) => {
+  const handleDateChange = (event: any, selectedDate: Date | null) => {
     const currentDate = selectedDate || editedDueDate;
     setEditedDueDate(currentDate);
   };
-  // const handleSalvarTarefa = () => {
-  //   // Lógica para salvar a tarefa
-  //   setModalVisible(false);
-  //   setTitulo('');
-  //   setDescricao('');
-  // };
 
   const difficultyOptions = [
-    { key: 'F', label: 'Fácil' },
+    { key: 'B', label: 'Fácil' },
     { key: 'I', label: 'Intermediário' },
-    { key: 'D', label: 'Difícil' },
+    { key: 'A', label: 'Difícil' },
   ];
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}> 
-    <View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+    <ScrollView contentContainerStyle={styles.scrollContent}>
       <View style={styles.container}>
         <Text style={styles.today}>{getTitleByDate(date)}</Text>
-
         <View style={styles.navigator}>
           <TouchableOpacity onPress={previousDay}>
             <Ionicons name="chevron-back" size={24} color="#fff" style={styles.icon} />
           </TouchableOpacity>
-
           <TouchableOpacity onPress={() => setShowCalendar(!showCalendar)}>
             <View style={styles.dateBox}>
-              <Text style={styles.dateText}>
-                {date.format('dddd')} - {date.format('D')}
-              </Text>
+              <Text style={styles.dateText}>{date.format('dddd')} - {date.format('D')}</Text>
             </View>
           </TouchableOpacity>
-
           <TouchableOpacity onPress={nextDay}>
             <Ionicons name="chevron-forward" size={24} color="#fff" style={styles.icon} />
           </TouchableOpacity>
@@ -126,19 +116,11 @@ export default function DateNavigatorWithCalendar() {
               style={styles.calendar}
             />
             <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-              <Text style={{
-                textAlign: 'center',
-                color: '#2a9d9f',
-                paddingVertical: 10,
-                backgroundColor: '#fff',
-              }}>
-                ver mais +
-              </Text>
+              <Text style={styles.verMais}>ver mais +</Text>
             </TouchableOpacity>
           </View>
         )}
-        
-        {/* Menu de filtro */}
+
         <View style={styles.menu}>
           <TouchableOpacity
             style={[styles.menuButton, tipoSelecionado === 'Pendentes' && styles.menuButtonAtivo]}
@@ -162,96 +144,64 @@ export default function DateNavigatorWithCalendar() {
         <ListaDeTarefas date={date} label="Tarefas" tipo={tipoSelecionado} />
       </View>
 
-    <Modal
-      transparent
-      animationType="none"
-      visible={modalVisible}
-      onRequestClose={() => setModalVisible(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <ScrollView contentContainerStyle={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Criar Tarefa</Text>
-
-          <Campo_Texto
-            label="Título"
-            placeholder="Digite o Título"
-            value={titulo}
-            onChangeText={setTitulo}
-          />
-
-          <Campo_Texto
-            label="Descrição"
-            value={descricao}
-            onChangeText={setDescricao}
-            placeholder="Digite a descrição"
-            multiline
-          />
-
-          <View>
+      <Modal transparent animationType="none" visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Criar Tarefa</Text>
+            <Campo_Texto label="Título" placeholder="Digite o Título" value={titulo} onChangeText={setTitulo} />
+            <Campo_Texto label="Descrição" value={descricao} onChangeText={setDescricao} placeholder="Digite a descrição" multiline />
             <Text style={styles.label}>Dificuldade</Text>
             <ModalSelector
               data={difficultyOptions}
               initValue={difficulty || "Selecione a dificuldade"}
               onChange={(option) => setDifficulty(option.key)}
-              style={styles.textInput}
             >
               <Text style={styles.modalSelectorText}>
-                {difficulty ? difficultyOptions.find(option => option.key === difficulty).label : 'Selecione a dificuldade'}
+                {difficulty ? difficultyOptions.find(o => o.key === difficulty)?.label : 'Selecione a dificuldade'}
               </Text>
             </ModalSelector>
-          </View>
 
-          <View style={styles.checkboxContainer}>
-            <Switch
-              value={isDateChecked}
-              onValueChange={setIsDateChecked}
-              thumbColor={isDateChecked ? '#2a9d9f' : '#ccc'}
-              trackColor={{ false: '#ccc', true: '#2a9d9f' }}
-            />
-            <Text style={styles.checkboxLabel}>Definir data de conclusão</Text>
-          </View>
-
-          {isDateChecked && (
-            <View>
-              <Text style={styles.label}>Data de conclusão</Text>
-              <DateTimePicker
-                style={{ backgroundColor: 'transparent', paddingHorizontal: 20, alignSelf: 'center' }}
-                value={editedDueDate}
-                mode="date"
-                display="spinner"
-                textColor="#000"
-                onChange={handleDateChange}
+            <View style={styles.checkboxContainer}>
+              <Switch
+                value={isDateChecked}
+                onValueChange={setIsDateChecked}
+                thumbColor={isDateChecked ? '#2a9d9f' : '#ccc'}
+                trackColor={{ false: '#ccc', true: '#2a9d9f' }}
               />
+              <Text style={styles.checkboxLabel}>Definir data de conclusão</Text>
             </View>
-          )}
 
-          <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={[styles.button, { backgroundColor: '#999999' }]}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={{ color: '#fff' }}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, { backgroundColor: '#2a9d9f' }]}
-              onPress={handleSalvarTarefa}
-            >
-              <Text style={{ color: '#fff' }}>Salvar</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </View>
-    </Modal>
+            {isDateChecked && (
+              <View>
+                <Text style={styles.label}>Data de conclusão</Text>
+                <DateTimePicker
+                  style={styles.datePicker}
+                  value={editedDueDate}
+                  mode="date"
+                  display="spinner"
+                  textColor="#000"
+                  onChange={handleDateChange}
+                />
+              </View>
+            )}
 
-    {/* Botão flutuante */}
-    <TouchableOpacity
-      style={styles.fab}
-      onPress={() => setModalVisible(true)}
-    >
-      <Ionicons name="add" size={28} color="#fff" />
-    </TouchableOpacity>
-    </View>
-  </ScrollView>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setModalVisible(false)}>
+                <Text style={styles.buttonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSalvarTarefa}>
+                <Text style={styles.buttonText}>Salvar</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+    </ScrollView>
+      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
+    </GestureHandlerRootView>
   );
 }
 
@@ -267,7 +217,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 20,
     borderRadius: 8,
-    width: '80%',
+    width: '100%',
     maxWidth: 500,
     gap: 10,
   },
@@ -282,7 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
-    marginBottom: 8,
+    // marginBottom: 8,
   },
   textInput: {
     width: '100%',
@@ -304,8 +254,10 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    // flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
     marginTop: 15,
   },
   button: {
@@ -384,8 +336,9 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom : -220,
-    left: '89%',
+    bottom : 100,
+    // left: '91%',
+    right: 20,
     backgroundColor: '#2a9d9f',
     width: 40,
     height: 40,

@@ -1,43 +1,55 @@
-// src/components/Ranking.js
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import axios from 'axios';
 import { useAuth } from '@/context/AuthContext';
+import { useTasks } from '@/context/TaskContext';
 
 const Ranking = () => {
   const [rankingData, setRankingData] = useState([]);
-  const [userData, setUserData] = useState(null);
-  const {user_id} = useAuth();
+  const [userPosition, setUserPosition] = useState<number | null>(null);
+  const [username, setUserName] = useState('');
+  const { user_id } = useAuth();
+  const { tasks } = useTasks(); // Atualiza ao mudar tarefas
 
   useEffect(() => {
-    // Função para buscar os dados do ranking
-    const fetchData = async () => {
+    const fetchRanking = async () => {
       try {
-        const response = await axios.get('http://192.168.0.169:8000/api/points/');
-        setRankingData(response.data);
-        
-        // Encontrar a posição do usuário
-        const user = response.data.find(user => user.user_id === user_id);
-        setUserData(user);
+        const response = await axios.get('http://localhost:8000/api/points/');
+        const sorted = [...response.data].sort((a, b) => b.points - a.points);
+        setRankingData(sorted);
+
+        const position = sorted.findIndex((u) => u.user_id === user_id);
+        const user = sorted[position];
+
+        if (user) {
+          setUserPosition(position + 1);
+          setUserName(user.username);
+        } else {
+          setUserPosition(null);
+          setUserName('');
+        }
       } catch (error) {
-        console.error(error);
+        console.error('Erro ao buscar ranking:', error);
       }
     };
 
-    fetchData();
-  }, []);
-
-  // Ordena os usuários pelo número de pontos
-  const sortedRanking = [...rankingData].sort((a, b) => b.points - a.points);
+    fetchRanking();
+  }, [tasks, user_id]); // ← Gatilhos corretos
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Ranking</Text>
 
-      {/* Top Ranking */}
+      {/* TOP 4 RANKING */}
       <View style={styles.topRanking}>
-        {sortedRanking.slice(0, 4).map((user, index) => (
-          <View key={user.user_id} style={styles.userRow}>
+        {rankingData.slice(0, 4).map((user, index) => (
+          <View
+            key={user.user_id}
+            style={[
+              styles.userRow,
+              user.user_id === user_id && { backgroundColor: '#E0F2F1', borderRadius: 6 },
+            ]}
+          >
             <View style={styles.userRow}>
               <Text style={styles.rank}>{index + 1}</Text>
               <Text style={styles.username}>{user.username}</Text>
@@ -47,12 +59,15 @@ const Ranking = () => {
         ))}
       </View>
 
-      {/* Sua Posição */}
-      {userData && (
+      {/* SUA POSIÇÃO */}
+      {userPosition !== null && (
         <View style={styles.userPosition}>
           <Text style={styles.positionText}>Sua Posição</Text>
-          <Text style={styles.userText}>Você ({userData.username})</Text>
-          <Text style={styles.pointsText}>{userData.points} pts</Text>
+          <Text style={styles.userText}>{userPosition}º lugar</Text>
+          <Text style={styles.userText}>{username}</Text>
+          <Text style={styles.pointsText}>
+            {rankingData[userPosition - 1]?.points} pts
+          </Text>
         </View>
       )}
     </View>
@@ -79,7 +94,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 10,
-    // borderBottomWidth: 1,
+    paddingHorizontal: 10,
     borderBottomColor: '#ddd',
   },
   rank: {
@@ -93,6 +108,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   points: {
+    alignSelf: 'center',
     fontSize: 18,
     color: '#FF5722',
   },

@@ -14,6 +14,7 @@ export default function TabLayout() {
             position: 'absolute',
             bottom: 0,
             left: 0,
+            paddingTop: 10,
             right: 0,
             height: 60,
             backgroundColor: '#059D9F',
@@ -23,10 +24,10 @@ export default function TabLayout() {
                 shadowOpacity: 0.1,
                 shadowRadius: 10,
                 shadowOffset: { width: 0, height: 5 },
-                paddingTop: 10,
+                // paddingTop: 10,
               },
               android: {
-                elevation: 10,
+                // elevation: 10,
               },
             }),
           },
@@ -62,6 +63,7 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     borderTopWidth: 0,
-    zIndex: 10,
+    // zIndex: 10,
+    
   },
 });

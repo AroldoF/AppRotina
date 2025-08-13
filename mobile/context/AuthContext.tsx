@@ -32,7 +32,7 @@ type UserRegister = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE = 'http://192.168.0.169:8000'; // troque para IP local se for testar em dispositivo físico
+const API_BASE = 'http://localhost:8000'; // troque para IP local se for testar em dispositivo físico
 
 // function setAxiosAuthToken(token: string | null) {
 //   if (token) {
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           AsyncStorage.getItem('@refresh_token'),
         ]);
         if (storedToken) {
-          setToken(storedToken);
+          setToken(storbedToken);
           // setAxiosAuthToken(storedToken);
         }
         if (storedId) {
